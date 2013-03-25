@@ -1,0 +1,74 @@
+<?php
+
+//Connect to SQL database
+$con = mysql_connect("localhost","*** hidden **","*** hidden ***");
+if (!$con)
+  {
+  die('Could not connect: ' . mysql_error());
+  }
+
+mysql_select_db("*** hideden ***", $con);
+
+$result = mysql_query("SELECT * FROM Clients");
+
+while($row = mysql_fetch_array($result))
+  {
+
+//Run Twitter/FB API for results:
+
+                                                $fId = $row['FBID'];
+  					$tId = $row['TID'];
+						$url = 'http://api.twitter.com/1/users/show.xml?screen_name=' . $tId;
+						$urlf = 'http://graph.facebook.com/' . $fId;
+						 
+						$ch = curl_init();
+						curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+						curl_setopt($ch, CURLOPT_URL, $url);
+						$data = curl_exec($ch);
+						curl_close($ch);
+						 
+						$xml = new SimpleXMLElement($data);
+						$clientP = $xml->profile_image_url;
+						$clientN = $xml->name;
+						$count = $xml->followers_count;
+						 
+						$count = (float) $count;
+						$count = number_format($count);
+						
+						
+						$ch = curl_init();
+						curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+						curl_setopt($ch, CURLOPT_URL, $urlf);
+						$JSONdata = curl_exec($ch);
+						curl_close($ch);
+						
+						$JSONarray=json_decode($JSONdata,true);
+						
+						$friends = $JSONarray['likes'];
+
+
+
+//Update new data from API's
+mysql_query("UPDATE Clients SET Name='$clientN', PicUrl='$clientP', Likes='$friends', Followers='$count' WHERE TID='$tId'");
+//update live-stats table
+$statsTable = $tId . "_stats";
+//mysql_query("INSERT INTO ".$statsTable." (Likes, Followers, Date) VALUES ('$friends','$count','')");
+$date = date("m/d/Y");
+mysql_query("INSERT INTO ".$statsTable." (Likes, Followers, Date) VALUES ('$friends','$count','$date')");
+
+ //use for error-checking
+echo "<u>New Client Info:</u> <br />";
+echo $url . "<br />";
+echo $urlf . "<br />";	
+echo "Friends: " .  $friends . "<br />";
+echo "Followers: " .  $count . "<br />";
+echo "<br />";
+
+
+}
+
+
+mysql_close($con);
+?> 
+
+ 
